@@ -3,9 +3,7 @@
 
 # Wut Cursor
 
-
 A lightweight iterator over a sequence of characters.
-
 
 ## Usage
 
