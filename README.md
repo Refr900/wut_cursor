@@ -10,7 +10,8 @@ A lightweight iterator over a sequence of characters.
 Add this to your Cargo.toml:
 
 ```toml
-wur_cursor = { version = "0.1.0", git = "https://github.com/Refr900/wut_cursor"}
+[dependencies]
+wut_cursor = { version = "0.1.0", git = "https://github.com/Refr900/wut_cursor"}
 ```
 
 Then, you can use it:
@@ -51,11 +52,12 @@ fn main() {
 By default, the cursor does not parse strings or characters, but has a default implementation that supports escaped symbols.
 
 ```rust
-use wur_cursor::{Cursor, Kind};
+use wut_cursor::{Cursor, Kind};
 
 fn main() {
     let source = r#"
     fn main() {
+        let c = '\0';
         print!("Hello world!\n");
     }
     "#
@@ -66,22 +68,21 @@ fn main() {
     let mut count = 1;
     loop {
         let token = cursor.next();
-        let mut end = index + token.len as usize;
-
-        match token.kind {
+        let len = match token.kind {
             Kind!['"'] => {
                 // ready-made string parsing
                 let str = cursor.parse_str_continue();
-                end = index + str.len as usize;
+                str.len
             }
             Kind!['\''] => {
                 // ready-made character parsing
                 let char = cursor.parse_char_continue();
-                end = index + char.len as usize;
+                char.len
             }
-            _ => (),
+            _ => token.len,
         };
 
+        let end = index + len as usize;
         let lexeme = &source[index..end];
         println!("{:>3}: {:?}", count, token.kind);
         println!("   |  lexeme: {:?}", lexeme);

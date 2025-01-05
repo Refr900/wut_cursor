@@ -10,19 +10,21 @@ pub struct Cursor<'a>(&'a str);
 const EOF: char = '\0';
 
 impl<'a> Cursor<'a> {
-    pub fn new(source: &'a str) -> Self {
+    #[inline]
+    pub const fn new(source: &'a str) -> Self {
         Self(source)
     }
 }
 
 impl<'a> Cursor<'a> {
     pub fn next(&mut self) -> Token {
-        let start = self.len();
+        let start_len = self.len();
         let kind = self.match_kind();
-        let len = self.token_len(start);
+        let len = self.token_len(start_len);
         Token::new(kind, len)
     }
 
+    #[inline]
     pub fn skip(&mut self) {
         self.next();
     }
@@ -37,6 +39,7 @@ impl<'a> Cursor<'a> {
         cursor.next()
     }
 
+    #[inline]
     pub fn first(&self) -> Token {
         self.clone().next()
     }
@@ -77,16 +80,19 @@ impl<'a> Cursor<'a> {
 }
 
 impl<'a> Cursor<'a> {
+    #[inline]
     pub const fn len(&self) -> usize {
         self.0.len()
     }
 
-    pub fn is_eof(&self) -> bool {
+    #[inline]
+    pub const fn is_eof(&self) -> bool {
         self.0.is_empty()
     }
 }
 
 impl<'a> Cursor<'a> {
+    #[inline(always)]
     fn match_kind(&mut self) -> Kind {
         let Some(first) = self.next_char() else {
             return Kind::Eof;
@@ -109,43 +115,44 @@ impl<'a> Cursor<'a> {
                 Kind::Literal(self.number_with_base(base))
             }
             '1'..='9' => Kind::Literal(self.decimal_number()),
-            '\'' => Kind!['\''],
-            '"' => Kind!['"'],
-            ';' => Kind![';'],
-            ':' => Kind![':'],
-            ',' => Kind![','],
-            '.' => Kind!['.'],
-            '@' => Kind!['@'],
-            '#' => Kind!['#'],
-            '~' => Kind!['~'],
-            '?' => Kind!['?'],
-            '$' => Kind!['$'],
-            '=' => Kind!['='],
-            '!' => Kind!['!'],
-            '<' => Kind!['<'],
-            '>' => Kind!['>'],
-            '-' => Kind!['-'],
-            '&' => Kind!['&'],
-            '|' => Kind!['|'],
-            '+' => Kind!['+'],
-            '*' => Kind!['*'],
-            '/' => Kind!['/'],
-            '^' => Kind!['^'],
-            '%' => Kind!['%'],
-            '(' => Kind!['('],
-            ')' => Kind![')'],
-            '{' => Kind!['{'],
-            '}' => Kind!['}'],
-            '[' => Kind!['['],
-            ']' => Kind![']'],
+            '\'' => Kind::Apostrophe,
+            '"' => Kind::Quote,
+            ';' => Kind::Semi,
+            ':' => Kind::Colon,
+            ',' => Kind::Comma,
+            '.' => Kind::Dot,
+            '@' => Kind::At,
+            '#' => Kind::Pound,
+            '~' => Kind::Tilde,
+            '?' => Kind::Question,
+            '$' => Kind::Dollar,
+            '=' => Kind::Eq,
+            '!' => Kind::Bang,
+            '<' => Kind::Lt,
+            '>' => Kind::Gt,
+            '-' => Kind::Minus,
+            '&' => Kind::And,
+            '|' => Kind::Or,
+            '+' => Kind::Plus,
+            '*' => Kind::Star,
+            '/' => Kind::Slash,
+            '^' => Kind::Caret,
+            '%' => Kind::Percent,
+            '(' => Kind::OpenParen,
+            ')' => Kind::CloseParen,
+            '{' => Kind::OpenBrace,
+            '}' => Kind::CloseBrace,
+            '[' => Kind::OpenBracket,
+            ']' => Kind::CloseBracket,
             _ => self.unknown(),
         }
     }
 }
 
 impl<'a> Cursor<'a> {
-    const fn token_len(&self, start: usize) -> u32 {
-        (start - self.len()) as u32
+    #[inline]
+    const fn token_len(&self, start_len: usize) -> u32 {
+        (start_len - self.len()) as u32
     }
 }
 
@@ -172,6 +179,7 @@ impl<'a> Cursor<'a> {
         Kind::Ident
     }
 
+    #[inline]
     fn invalid_ident(&mut self) -> Kind {
         self.skip_while_char(char::is_alphanumeric);
         Kind::InvalidIdent
@@ -182,6 +190,7 @@ impl<'a> Cursor<'a> {
 struct JustZero;
 
 impl<'a> Cursor<'a> {
+    #[inline(always)]
     fn base(&mut self) -> Result<Base, JustZero> {
         // We've already missed the starting `0`
         // Check special character
@@ -214,6 +223,7 @@ impl<'a> Cursor<'a> {
         self.maybe_float(base)
     }
 
+    #[inline]
     fn decimal_number(&mut self) -> LiteralKind {
         self.skip_decimal();
         self.maybe_float(Base::Decimal)
@@ -277,39 +287,12 @@ impl<'a> Cursor<'a> {
 }
 
 impl<'a> Cursor<'a> {
+    #[inline(always)]
     fn unknown(&mut self) -> Kind {
         self.skip_while_char(|c| !c.is_ascii() && c.is_alphanumeric());
         Kind::Unknown
     }
 }
-
-// region: ----- Space -----
-
-#[derive(Debug, Clone, Copy)]
-pub struct Space {
-    pub newline: bool,
-    pub len: u32,
-}
-
-impl<'a> Cursor<'a> {
-    pub fn parse_space(&mut self) -> Space {
-        let start = self.len();
-        let mut newline = false;
-        self.skip_while_char(|c| {
-            if c == '\n' {
-                newline = true;
-                return true;
-            }
-            c.is_whitespace()
-        });
-        Space {
-            newline,
-            len: self.token_len(start),
-        }
-    }
-}
-
-// endregion: ----- Space -----
 
 // region: ----- Char -----
 
@@ -324,7 +307,7 @@ impl<'a> Cursor<'a> {
     /// Parse char but skipping parsing first apostrophe but including it in len
     pub fn parse_char_continue(&mut self) -> Char {
         // include apostrophe
-        let start = self.len() + 1;
+        let start_len = self.len() + 1;
 
         if self.second_char() == '\'' && self.first_char() != '\\' {
             // skip char
@@ -334,7 +317,7 @@ impl<'a> Cursor<'a> {
             return Char {
                 terminated: true,
                 is_one_symbol: true,
-                len: self.token_len(start),
+                len: self.token_len(start_len),
             };
         }
 
@@ -351,7 +334,7 @@ impl<'a> Cursor<'a> {
                     return Char {
                         terminated: true,
                         is_one_symbol: char_count == 1,
-                        len: self.token_len(start),
+                        len: self.token_len(start_len),
                     };
                 }
                 // newline is not supported
@@ -370,7 +353,7 @@ impl<'a> Cursor<'a> {
         Char {
             terminated: false,
             is_one_symbol: false,
-            len: self.token_len(start),
+            len: self.token_len(start_len),
         }
     }
 }
@@ -389,7 +372,7 @@ impl<'a> Cursor<'a> {
     /// Parse string but skipping parsing first quote but including it in len
     pub fn parse_str_continue(&mut self) -> Str {
         // include quote
-        let start = self.len() + 1;
+        let start_len = self.len() + 1;
         loop {
             if self.is_eof() {
                 break;
@@ -401,7 +384,7 @@ impl<'a> Cursor<'a> {
                     self.skip_char();
                     return Str {
                         terminated: true,
-                        len: self.token_len(start),
+                        len: self.token_len(start_len),
                     };
                 }
                 // escaped character
@@ -416,42 +399,45 @@ impl<'a> Cursor<'a> {
 
         Str {
             terminated: false,
-            len: self.token_len(start),
+            len: self.token_len(start_len),
         }
     }
 }
 
 // endregion: ----- String -----
 
+// region: ----- Char manipulation -----
+
 impl<'a> Cursor<'a> {
-    /// Returns the first character and moving to the next character.
     #[inline]
-    pub fn next_char(&mut self) -> Option<char> {
+    fn next_char(&mut self) -> Option<char> {
         let mut chars = self.0.chars();
         let char = chars.next();
         self.0 = chars.as_str();
         char
     }
 
-    /// Skip the current character.
     #[inline(always)]
-    pub fn skip_char(&mut self) {
+    fn skip_char(&mut self) {
         self.next_char();
     }
 }
 
 impl<'a> Cursor<'a> {
-    pub fn first_char(&mut self) -> char {
+    #[inline]
+    fn first_char(&mut self) -> char {
         self.0.chars().next().unwrap_or(EOF)
     }
 
-    pub fn second_char(&self) -> char {
+    #[inline]
+    fn second_char(&self) -> char {
         let mut chars = self.0.chars();
         chars.next();
         chars.next().unwrap_or(EOF)
     }
 
-    pub fn two_chars(&mut self) -> [char; 2] {
+    #[inline]
+    fn two_chars(&mut self) -> [char; 2] {
         let mut chars = self.0.chars();
         let first = chars.next().unwrap_or(EOF);
         let second = chars.next().unwrap_or(EOF);
@@ -460,7 +446,7 @@ impl<'a> Cursor<'a> {
 }
 
 impl<'a> Cursor<'a> {
-    pub fn skip_while_char<F>(&mut self, mut predicate: F)
+    fn skip_while_char<F>(&mut self, mut predicate: F)
     where
         F: FnMut(char) -> bool,
     {
@@ -470,14 +456,14 @@ impl<'a> Cursor<'a> {
     }
 }
 
-#[inline]
-fn is_ident_start(c: char) -> bool {
+#[inline(always)]
+const fn is_ident_start(c: char) -> bool {
     // we support only ascii for identifiers
     c.is_ascii_alphabetic() || c == '_'
 }
 
-#[inline]
-fn is_ident_continue(c: char) -> bool {
+#[inline(always)]
+const fn is_ident_continue(c: char) -> bool {
     // we support only ascii for identifiers
     c.is_ascii_alphanumeric() || c == '_'
 }

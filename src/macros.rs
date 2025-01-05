@@ -1,3 +1,4 @@
+#[macro_export]
 macro_rules! Kind {
     ['"']  => { $crate::Kind::Quote };
     ['\''] => { $crate::Kind::Apostrophe };
@@ -29,5 +30,3 @@ macro_rules! Kind {
     ['[']  => { $crate::Kind::OpenBracket };
     [']']  => { $crate::Kind::CloseBracket };
 }
-
-pub(crate) use Kind;
