@@ -1,6 +1,3 @@
-//! > [!WARNING]
-//! > The project was created solely for educational purposes.
-//! 
 //! # Wut Cursor
 //! 
 //! A lightweight iterator over a sequence of characters.
