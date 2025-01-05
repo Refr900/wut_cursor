@@ -11,7 +11,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-wut_cursor = { version = "0.2.0", git = "https://github.com/Refr900/wut_cursor"}
+wut_cursor = { version = "0.2.0", git = "https://github.com/Refr900/wut_cursor.git"}
 ```
 
 Then, you can use it:
